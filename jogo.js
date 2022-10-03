@@ -1,5 +1,6 @@
-console.log("[DevSoutinho] Flappy Bird");
+console.log("[OmegaBlack] Flappy Bird");
 
+let gameFrames = 0;
 const som_Hit = new Audio();
 som_Hit.src = "./efeitos/hit.wav";
 const som_Caiu = new Audio();
@@ -54,39 +55,54 @@ const planoDeFundo = {
 };
 
 // [Chao]
-const chao = {
-  spriteX: 0,
-  spriteY: 610,
-  largura: 224,
-  altura: 112,
-  x: 0,
-  y: canvas.height - 112,
-  desenha() {
-    contexto.drawImage(
-      sprites,
-      chao.spriteX,
-      chao.spriteY,
-      chao.largura,
-      chao.altura,
-      chao.x,
-      chao.y,
-      chao.largura,
-      chao.altura
-    );
+function criaChao() {
+  const chao = {
+    spriteX: 0,
+    spriteY: 610,
+    largura: 224,
+    altura: 112,
+    x: 0,
+    y: canvas.height - 112,
+    atualiza() {
+      const movimentoDoChao = 1;
+      const repeteEm = chao.largura / 2;
+      const movimentacao = chao.x - movimentoDoChao;
 
-    contexto.drawImage(
-      sprites,
-      chao.spriteX,
-      chao.spriteY,
-      chao.largura,
-      chao.altura,
-      chao.x + chao.largura,
-      chao.y,
-      chao.largura,
-      chao.altura
-    );
-  },
-};
+      /// formula magica para repeticao infinita do paralax
+      /// o resto da divisao nunca sera maior que o dividendo.
+      /// sendo assim, a posicao do chao sera sempre:
+      /// restoDivisao de [posicao do chao - 1] pela metade da largura do chao
+      /// complicado? Pra caramba!
+      chao.x = movimentacao % repeteEm;
+    },
+    desenha() {
+      contexto.drawImage(
+        sprites,
+        chao.spriteX,
+        chao.spriteY,
+        chao.largura,
+        chao.altura,
+        chao.x,
+        chao.y,
+        chao.largura,
+        chao.altura
+      );
+
+      contexto.drawImage(
+        sprites,
+        chao.spriteX,
+        chao.spriteY,
+        chao.largura,
+        chao.altura,
+        chao.x + chao.largura,
+        chao.y,
+        chao.largura,
+        chao.altura
+      );
+    },
+  };
+  return chao;
+}
 
 function fazColisao(flappyBird, chao) {
   const flappyBirdY = flappyBird.y + flappyBird.altura;
@@ -115,7 +131,7 @@ function criaFlappyBird() {
     velocidade: 0,
     gravidade: 0.25,
     atualiza() {
-      if (fazColisao(flappyBird, chao)) {
+      if (fazColisao(flappyBird, globais.chao)) {
         som_Hit.play();
 
         setTimeout(() => {
@@ -127,11 +143,32 @@ function criaFlappyBird() {
       flappyBird.velocidade += flappyBird.gravidade;
       flappyBird.y += flappyBird.velocidade;
     },
+    //animando voo do passarinho
+    movimentos: [
+      { spriteX: 0, spriteY: 0 }, // asa pra cima
+      { spriteX: 0, spriteY: 26 }, //asa no meio
+      { spriteX: 0, spriteY: 52 }, //asa pra baixo
+      { spriteX: 0, spriteY: 26 }, //asa no meio
+    ],
+    frameAtual: 0,
+    atualizaFrameAtual() {
+      const intervaloDeFrames = 10;
+      const passouIntervalo = gameFrames % intervaloDeFrames === 0; //retorna true toda vez que o resto da divisao for zero
+
+      if (passouIntervalo) {
+        const baseDoIncremento = 1;
+        const incremento = baseDoIncremento + flappyBird.frameAtual;
+        const baseRepeticao = flappyBird.movimentos.length;
+        flappyBird.frameAtual = incremento % baseRepeticao;
+      }
+    },
     desenha() {
+      flappyBird.atualizaFrameAtual();
+      const { spriteX, spriteY } = flappyBird.movimentos[flappyBird.frameAtual]; //destruct
       contexto.drawImage(
         sprites,
-        flappyBird.spriteX,
-        flappyBird.spriteY, // Sprite X, Sprite Y
+        spriteX,
+        spriteY,
         flappyBird.largura,
         flappyBird.altura, // Tamanho do recorte na sprite
         flappyBird.x,
@@ -186,24 +223,27 @@ const Telas = {
   INICIO: {
     inicializa() {
       globais.flappyBird = criaFlappyBird();
+      globais.chao = criaChao();
     },
     desenha() {
       planoDeFundo.desenha();
-      chao.desenha();
+      globais.chao.desenha();
       globais.flappyBird.desenha();
       mensagemGetReady.desenha();
     },
     click() {
       mudaParaTela(Telas.JOGO);
     },
-    atualiza() {},
+    atualiza() {
+      globais.chao.atualiza();
+    },
   },
 };
 
 Telas.JOGO = {
   desenha() {
     planoDeFundo.desenha();
-    chao.desenha();
+    globais.chao.desenha();
     globais.flappyBird.desenha();
   },
   click() {
@@ -211,6 +251,7 @@ Telas.JOGO = {
   },
   atualiza() {
     globais.flappyBird.atualiza(); //atualiza a posicao antes de desenhar
+    globais.chao.atualiza();
   },
 };
 
@@ -219,6 +260,7 @@ function loop() {
   telaAtiva.desenha();
   telaAtiva.atualiza();
 
+  gameFrames++;
   requestAnimationFrame(loop);
 }
 
