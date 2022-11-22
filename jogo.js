@@ -313,7 +313,7 @@ function criaCanos() {
 
         if (par.x + canos.largura <= 0) {
           globais.placar.atualiza();
-          canos.pares.shift();
+          canos.pares.shift();vc
         }
       });
     },
